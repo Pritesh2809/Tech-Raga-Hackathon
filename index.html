@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechRaga '26 E-Certificate Portal</title>
+    <!-- pdf-lib for client-side PDF modification -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0c29;
+            background: linear-gradient(to right, #24243e, #302b63, #0f0c29);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .portal-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 { margin-top: 0; color: #00d2ff; }
+        input {
+            padding: 12px;
+            margin: 20px 0;
+            border: none;
+            border-radius: 6px;
+            width: 90%;
+            font-size: 16px;
+            outline: none;
+        }
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #ff007f, #7000ff);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 96%;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4);
+        }
+        #statusMessage {
+            margin-top: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="portal-container">
+        <h2>TechRaga '26 Certificates</h2>
+        <p>Enter your registered email to download your E-Certificate.</p>
+        <input type="email" id="emailInput" placeholder="e.g., student@college.edu" required>
+        <button onclick="generateCertificate()">Download Certificate</button>
+        <div id="statusMessage"></div>
+    </div>
+
+    <script>
+        // The published CSV URL you provided
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrITbsr2AhjmwJcuQQugnbatc8-rWsG6ycKnMXSZbnt64y3L7Gzg0rXGmHScFc-BIzQCHU8bFAiS88/pub?output=csv";
+        const PDF_TEMPLATE = "CERTIFICATE TECHRAGA E CERTIFICATE.pdf"; 
+
+        async function generateCertificate() {
+            const email = document.getElementById('emailInput').value.trim().toLowerCase();
+            const msgBox = document.getElementById('statusMessage');
+            
+            if(!email) {
+                showMessage("Please enter a valid email ID.", "#ff4c4c");
+                return;
+            }
+
+            showMessage("Verifying details...", "#f1c40f");
+
+            try {
+                // 1. Fetch and Parse Google Sheets CSV data
+                const response = await fetch(CSV_URL);
+                const csvText = await response.text();
+                const rows = csvText.split('\n').map(row => row.split(','));
+                
+                // Updated indexes based on your sheet layout
+                const colName = 0;    // Column A
+                const colEmail = 1;   // Column B
+                const colCollege = 2; // Column C
+
+                let studentData = null;
+                
+                // Start at 1 to skip the header row
+                for (let i = 1; i < rows.length; i++) {
+                    const rowEmail = rows[i][colEmail]?.trim().toLowerCase();
+                    if (rowEmail === email) {
+                        studentData = {
+                            name: rows[i][colName]?.trim(),
+                            college: rows[i][colCollege]?.trim(),
+                            event: "Hackathon" // Hardcoded since it's not in the sheet
+                        };
+                        break;
+                    }
+                }
+
+                if (!studentData) {
+                    showMessage("Email not found in the participant list.", "#ff4c4c");
+                    return;
+                }
+
+                showMessage("Generating your certificate...", "#00d2ff");
+
+                // 2. Load the base PDF template
+                const pdfBytes = await fetch(PDF_TEMPLATE).then(res => res.arrayBuffer());
+                const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                const pages = pdfDoc.getPages();
+                const firstPage = pages[0];
+                
+                // 3. Setup Typography
+                const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+                
+                // Matching the dark purple/blue from the TechRaga text
+                const textColor = PDFLib.rgb(0.1, 0.05, 0.3); 
+                const nameSize = 24;
+                const standardSize = 18;
+
+                // 4. Position Text on the PDF
+                // Note: (0,0) is bottom-left. Adjust x and y as needed for final alignment.
+                
+                // Name Placement
+                firstPage.drawText(studentData.name, { 
+                    x: 320,  
+                    y: 285,  
+                    size: nameSize, 
+                    font: font, 
+                    color: textColor 
+                });
+
+                // College Placement
+                firstPage.drawText(studentData.college, { 
+                    x: 350, 
+                    y: 245, 
+                    size: standardSize, 
+                    font: font, 
+                    color: textColor 
+                });
+
+                // Event Placement
+                firstPage.drawText(studentData.event, { 
+                    x: 320, 
+                    y: 205, 
+                    size: standardSize, 
+                    font: font, 
+                    color: textColor 
+                });
+
+                // 5. Package and Download
+                const modifiedPdfBytes = await pdfDoc.save();
+                const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${studentData.name.replace(/\s+/g, '_')}_Certificate.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showMessage("Certificate downloaded successfully!", "#2ecc71");
+
+            } catch (error) {
+                console.error("Certificate Generation Error:", error);
+                showMessage("An error occurred. Check if the PDF is in the same folder.", "#ff4c4c");
+            }
+        }
+
+        function showMessage(text, color) {
+            const msgBox = document.getElementById('statusMessage');
+            msgBox.textContent = text;
+            msgBox.style.color = color;
+        }
+    </script>
+</body>
+</html>
