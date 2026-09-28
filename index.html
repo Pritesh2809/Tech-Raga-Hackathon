@@ -1,195 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechRaga '26 E-Certificate Portal</title>
-    <!-- pdf-lib for client-side PDF modification -->
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0f0c29;
-            background: linear-gradient(to right, #24243e, #302b63, #0f0c29);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .portal-container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            width: 100%;
-            max-width: 400px;
-        }
-        h2 { margin-top: 0; color: #00d2ff; }
-        input {
-            padding: 12px;
-            margin: 20px 0;
-            border: none;
-            border-radius: 6px;
-            width: 90%;
-            font-size: 16px;
-            outline: none;
-        }
-        button {
-            padding: 12px 24px;
-            background: linear-gradient(45deg, #ff007f, #7000ff);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: transform 0.2s, box-shadow 0.2s;
-            width: 96%;
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4);
-        }
-        #statusMessage {
-            margin-top: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-            height: 20px;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TechRaga'26 – Download Your Certificate</title>
+<style>
+:root{--bg:#1a0b3a;--card:#2a1258;--gold:#f3c13a;--text:#fff;--muted:#c9bde8;--err:#ff8a8a}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 20% 10%,#4b1d8f 0,var(--bg) 55%)}
+.card{width:100%;max-width:460px;transition:max-width .2s;background:var(--card);border:1px solid #ffffff22;border-radius:16px;padding:32px 26px;box-shadow:0 20px 60px #0008}
+h1{margin:0 0 4px;font-size:1.5rem;color:var(--gold);text-align:center}
+p.sub{margin:0 0 22px;text-align:center;color:var(--muted);font-size:.92rem}
+label{font-size:.85rem;color:var(--muted)}
+input{width:100%;margin:6px 0 14px;padding:13px 14px;border-radius:10px;border:1px solid #ffffff33;background:#160a33;color:#fff;font-size:1rem}
+input:focus{outline:2px solid var(--gold)}
+button{width:100%;padding:13px;border:0;border-radius:10px;background:linear-gradient(90deg,#f3c13a,#ffdd7a);color:#2a1258;font-weight:700;font-size:1rem;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+button.alt{margin-top:10px;background:#3a1f78;color:#fff;font-weight:600}
+#preview{display:none;margin-top:18px}
+#preview canvas{width:100%;height:auto;border-radius:8px;box-shadow:0 6px 24px #0008}
+.card.wide{max-width:980px}
+#msg{margin-top:16px;font-size:.92rem;text-align:center;min-height:1.2em}
+#msg.err{color:var(--err)}
+#msg.ok{color:#8ff0b0}
+</style>
 </head>
 <body>
+<div class="card">
+  <h1>TechRaga'26</h1>
+  <p class="sub">Enter your registered email to download your Certificate of Participation</p>
+  <label for="email">Email ID</label>
+  <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+  <button id="go">Get Certificate</button>
+  <div id="list"></div>
+  <div id="msg"></div>
+  <div id="preview"><canvas id="cv"></canvas><button id="dl" style="margin-top:14px">⬇ Download Certificate (PDF)</button></div>
+</div>
 
-    <div class="portal-container">
-        <h2>TechRaga '26 Certificates</h2>
-        <p>Enter your registered email to download your E-Certificate.</p>
-        <input type="email" id="emailInput" placeholder="e.g., student@college.edu" required>
-        <button onclick="generateCertificate()">Download Certificate</button>
-        <div id="statusMessage"></div>
-    </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* ================= SETTINGS ================= */
+const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrITbsr2AhjmwJcuQQugnbatc8-rWsG6ycKnMXSZbnt64y3L7Gzg0rXGmHScFc-BIzQCHU8bFAiS88/pub?output=csv";
+// Optional: if your sheet has no "event" column, put the event name here (or leave "" to omit it)
+const DEFAULT_EVENT = "";
+/* ============================================ */
 
-    <script>
-        // The published CSV URL you provided
-        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrITbsr2AhjmwJcuQQugnbatc8-rWsG6ycKnMXSZbnt64y3L7Gzg0rXGmHScFc-BIzQCHU8bFAiS88/pub?output=csv";
-        const PDF_TEMPLATE = "CERTIFICATE TECHRAGA E CERTIFICATE.pdf"; 
+const TEMPLATE_URL = "certificate-template.pdf";   // must be in the same folder as this html file
+let templateBytes = null;
+async function getTemplate(){
+  if(!templateBytes){
+    const r = await fetch(TEMPLATE_URL);
+    if(!r.ok) throw new Error("certificate-template.pdf not found next to index.html");
+    templateBytes = new Uint8Array(await r.arrayBuffer());
+  }
+  return templateBytes;
+}
 
-        async function generateCertificate() {
-            const email = document.getElementById('emailInput').value.trim().toLowerCase();
-            const msgBox = document.getElementById('statusMessage');
-            
-            if(!email) {
-                showMessage("Please enter a valid email ID.", "#ff4c4c");
-                return;
-            }
+/* ---------- Certificate layout (measured from your template) ---------- */
+const LAYOUT = {
+  pageH: 595.2756,
+  left: 57.23, width: 732,      // text block: x from 57.2 to 789.2 pt
+  firstBaselineTop: 356.48,     // baseline of first line, measured from top
+  lineGap: 30.09,               // same line pitch as the template
+  fontSize: 18.9,               // same size as the template
+  minFontSize: 15,
+  maxLines: 4,
+  color: [1, 1, 1]              // white, same as template text
+};
 
-            showMessage("Verifying details...", "#f1c40f");
+function b64ToBytes(b64){const s=atob(b64),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;}
 
-            try {
-                // 1. Fetch and Parse Google Sheets CSV data
-                const response = await fetch(CSV_URL);
-                const csvText = await response.text();
-                const rows = csvText.split('\n').map(row => row.split(','));
-                
-                // Updated indexes based on your sheet layout
-                const colName = 0;    // Column A
-                const colEmail = 1;   // Column B
-                const colCollege = 2; // Column C
+function cleanText(s, font){
+  // drop characters the standard PDF font cannot draw
+  s = (s||"").replace(/\s+/g," ").trim();
+  let out="";
+  for(const ch of s){ try{ font.widthOfTextAtSize(ch,10); out+=ch; }catch(e){} }
+  return out;
+}
 
-                let studentData = null;
-                
-                // Start at 1 to skip the header row
-                for (let i = 1; i < rows.length; i++) {
-                    const rowEmail = rows[i][colEmail]?.trim().toLowerCase();
-                    if (rowEmail === email) {
-                        studentData = {
-                            name: rows[i][colName]?.trim(),
-                            college: rows[i][colCollege]?.trim(),
-                            event: "Hackathon" // Hardcoded since it's not in the sheet
-                        };
-                        break;
-                    }
-                }
+/* words are arrays of parts: {t, bold, sup} */
+function buildWords(name, college, event){
+  const w = (t,bold)=>[{t,bold:!!bold}];
+  const words=[];
+  const add=(str,bold)=>str.split(" ").filter(Boolean).forEach(x=>words.push(w(x,bold)));
+  add("This is to certify that Mr./Ms.");
+  add(name,true);
+  add("of");
+  add(college,true);
+  add("has participated in the");
+  if(event){ add(event,true); add("event"); } else { add("event"); }
+  add("as part of TechRaga’26 – A Mega Inter Collegiate Fest, held on");
+  words.push([{t:"23"},{t:"rd",sup:true}]);
+  add("&");
+  words.push([{t:"24"},{t:"th",sup:true}]);
+  add("September 2026 at KPR College of Arts Science and Research, Coimbatore.");
+  return words;
+}
 
-                if (!studentData) {
-                    showMessage("Email not found in the participant list.", "#ff4c4c");
-                    return;
-                }
+async function buildCertificate(PDFLib, data){
+  const {PDFDocument, StandardFonts, rgb} = PDFLib;
+  const doc = await PDFDocument.load(await getTemplate());
+  const page = doc.getPage(0);
+  const reg = await doc.embedFont(StandardFonts.TimesRoman);
+  const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
 
-                showMessage("Generating your certificate...", "#00d2ff");
+  const name = cleanText(data.name, bold), college = cleanText(data.college, bold), event = cleanText(data.event, bold);
+  const words = buildWords(name, college, event);
+  const L = LAYOUT;
 
-                // 2. Load the base PDF template
-                const pdfBytes = await fetch(PDF_TEMPLATE).then(res => res.arrayBuffer());
-                const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-                const pages = pdfDoc.getPages();
-                const firstPage = pages[0];
-                
-                // 3. Setup Typography
-                const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-                
-                // Matching the dark purple/blue from the TechRaga text
-                const textColor = PDFLib.rgb(0.1, 0.05, 0.3); 
-                const nameSize = 24;
-                const standardSize = 18;
+  const partW = (p,size)=>{
+    const f = p.bold?bold:reg, s = p.sup?size*0.5:size;
+    return f.widthOfTextAtSize(p.t, s);
+  };
+  const wordW = (wd,size)=>wd.reduce((a,p)=>a+partW(p,size),0);
 
-                // 4. Position Text on the PDF
-                // Note: (0,0) is bottom-left. Adjust x and y as needed for final alignment.
-                
-                // Name Placement
-                firstPage.drawText(studentData.name, { 
-                    x: 320,  
-                    y: 285,  
-                    size: nameSize, 
-                    font: font, 
-                    color: textColor 
-                });
+  // wrap; shrink font only if text would need more than maxLines
+  let size = L.fontSize, lines;
+  for(;;){
+    const space = reg.widthOfTextAtSize(" ", size);
+    lines=[]; let cur=[], curW=0;
+    for(const wd of words){
+      const ww = wordW(wd,size);
+      const need = cur.length? curW+space+ww : ww;
+      if(need > L.width && cur.length){ lines.push(cur); cur=[wd]; curW=ww; }
+      else { cur.push(wd); curW=need; }
+    }
+    if(cur.length) lines.push(cur);
+    if(lines.length<=L.maxLines || size<=L.minFontSize) break;
+    size -= 0.5;
+  }
 
-                // College Placement
-                firstPage.drawText(studentData.college, { 
-                    x: 350, 
-                    y: 245, 
-                    size: standardSize, 
-                    font: font, 
-                    color: textColor 
-                });
+  const spaceNat = reg.widthOfTextAtSize(" ", size);
+  lines.forEach((ln,i)=>{
+    const y = L.pageH - (L.firstBaselineTop + i*L.lineGap);
+    const last = i===lines.length-1;
+    const natural = ln.reduce((a,wd)=>a+wordW(wd,size),0);
+    // justify all lines except the last (as in the original template)
+    let gap = spaceNat;
+    if(!last && ln.length>1) gap = (L.width - natural)/(ln.length-1);
+    let x = L.left;
+    ln.forEach(wd=>{
+      wd.forEach(p=>{
+        const f=p.bold?bold:reg, s=p.sup?size*0.5:size;
+        page.drawText(p.t,{x, y: y + (p.sup? size*0.38 : 0), size:s, font:f, color:rgb(...L.color)});
+        x += f.widthOfTextAtSize(p.t,s);
+      });
+      x += gap;
+    });
+  });
+  doc.setTitle("TechRaga'26 Certificate – "+name);
+  return await doc.save();
+}
 
-                // Event Placement
-                firstPage.drawText(studentData.event, { 
-                    x: 320, 
-                    y: 205, 
-                    size: standardSize, 
-                    font: font, 
-                    color: textColor 
-                });
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  const rows=[]; let row=[], cell="", q=false;
+  text = text.replace(/^\uFEFF/,"");
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c=='"'){ if(text[i+1]=='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+    else if(c=='"') q=true;
+    else if(c==','){ row.push(cell); cell=""; }
+    else if(c=='\n'||c=='\r'){ if(c=='\r'&&text[i+1]=='\n') i++; row.push(cell); rows.push(row); row=[]; cell=""; }
+    else cell+=c;
+  }
+  if(cell!==""||row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r=>r.some(x=>x.trim()!==""));
+}
 
-                // 5. Package and Download
-                const modifiedPdfBytes = await pdfDoc.save();
-                const blob = new Blob([modifiedPdfBytes], { type: "application/pdf" });
-                
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `${studentData.name.replace(/\s+/g, '_')}_Certificate.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+async function loadStudents(){
+  if(location.protocol==="file:") throw new Error("Open this page from a web address (localhost or your hosted link), not directly as a file.");
+  const res = await fetch(SHEET_CSV + (SHEET_CSV.includes("?")?"&":"?") + "t=" + Date.now());
+  if(!res.ok) throw new Error("Could not load the student list");
+  const rows = parseCSV(await res.text());
+  const head = rows[0].map(h=>h.toLowerCase().replace(/[^a-z]/g,""));
+  const find = (...keys)=>head.findIndex(h=>keys.some(k=>h.includes(k)));
+  const iMail = find("mail"), iName = find("name"), iCol = find("college","institution","university"), iEvt = find("event");
+  if(iMail<0||iName<0) throw new Error("Sheet needs 'name' and 'mail' columns");
+  return rows.slice(1).map(r=>({
+    email:(r[iMail]||"").trim().toLowerCase(),
+    name:(r[iName]||"").trim(),
+    college: iCol>=0?(r[iCol]||"").trim():"",
+    event: iEvt>=0?(r[iEvt]||"").trim():DEFAULT_EVENT
+  })).filter(s=>s.email);
+}
 
-                showMessage("Certificate downloaded successfully!", "#2ecc71");
+/* ---------- UI ---------- */
+const $ = id=>document.getElementById(id);
+const msg=(t,c="")=>{$("msg").textContent=t;$("msg").className=c;};
 
-            } catch (error) {
-                console.error("Certificate Generation Error:", error);
-                showMessage("An error occurred. Check if the PDF is in the same folder.", "#ff4c4c");
-            }
-        }
+let current=null;
+async function show(s){
+  msg("Preparing your certificate…");
+  const bytes = await buildCertificate(PDFLib, s);
+  current = {bytes, file:"TechRaga26_Certificate_"+s.name.replace(/[^\w]+/g,"_")+".pdf"};
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf = await pdfjsLib.getDocument({data: bytes.slice()}).promise;
+    const pg = await pdf.getPage(1);
+    const vp = pg.getViewport({scale:2.2});
+    const cv = $("cv"); cv.width=vp.width; cv.height=vp.height;
+    await pg.render({canvasContext:cv.getContext("2d"), viewport:vp}).promise;
+    document.querySelector(".card").classList.add("wide");
+  }catch(e){ console.warn("Preview failed", e); $("cv").style.display="none"; }
+  $("preview").style.display="block";
+  msg("Certificate ready for "+s.name,"ok");
+}
+$("dl").onclick=()=>{
+  if(!current) return;
+  const url = URL.createObjectURL(new Blob([current.bytes],{type:"application/pdf"}));
+  const a=document.createElement("a"); a.href=url; a.download=current.file;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+};
 
-        function showMessage(text, color) {
-            const msgBox = document.getElementById('statusMessage');
-            msgBox.textContent = text;
-            msgBox.style.color = color;
-        }
-    </script>
+$("go").onclick = async ()=>{
+  const email = $("email").value.trim().toLowerCase();
+  $("list").innerHTML=""; $("preview").style.display="none"; document.querySelector(".card").classList.remove("wide"); $("cv").style.display="block";
+  if(!/^\S+@\S+\.\S+$/.test(email)) return msg("Please enter a valid email ID.","err");
+  $("go").disabled=true; msg("Checking…");
+  try{
+    const matches = (await loadStudents()).filter(s=>s.email===email);
+    if(!matches.length) msg("This email was not found. Please use the email you registered with.","err");
+    else if(matches.length===1) await show(matches[0]);
+    else{
+      msg("Multiple certificates found – choose one:");
+      matches.forEach(s=>{
+        const b=document.createElement("button"); b.className="alt";
+        b.textContent = s.event || (s.name+" – "+s.college);
+        b.onclick=()=>show(s); $("list").appendChild(b);
+      });
+    }
+  }catch(e){ console.error(e); msg(e.message||"Something went wrong. Please try again.","err"); }
+  $("go").disabled=false;
+};
+$("email").addEventListener("keydown",e=>{ if(e.key==="Enter") $("go").click(); });
+</script>
 </body>
 </html>
