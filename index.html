@@ -42,8 +42,9 @@ button.alt{margin-top:10px;background:#3a1f78;color:#fff;font-weight:600}
 <script>
 /* ================= SETTINGS ================= */
 const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrITbsr2AhjmwJcuQQugnbatc8-rWsG6ycKnMXSZbnt64y3L7Gzg0rXGmHScFc-BIzQCHU8bFAiS88/pub?output=csv";
-// Optional: if your sheet has no "event" column, put the event name here (or leave "" to omit it)
-const DEFAULT_EVENT = "";
+// Event name printed on every certificate (overrides any "event" column in the sheet)
+const BOLD_VALUES = false;   // false = name/college/event use the same font & white colour as the rest of the text
+const DEFAULT_EVENT = "Hackathon";
 /* ============================================ */
 
 const TEMPLATE_URL = "certificate-template.pdf";   // must be in the same folder as this html file
@@ -81,7 +82,7 @@ function cleanText(s, font){
 
 /* words are arrays of parts: {t, bold, sup} */
 function buildWords(name, college, event){
-  const w = (t,bold)=>[{t,bold:!!bold}];
+  const w = (t,bold)=>[{t,bold:!!bold&&BOLD_VALUES}];
   const words=[];
   const add=(str,bold)=>str.split(" ").filter(Boolean).forEach(x=>words.push(w(x,bold)));
   add("This is to certify that Mr./Ms.");
@@ -182,7 +183,7 @@ async function loadStudents(){
     email:(r[iMail]||"").trim().toLowerCase(),
     name:(r[iName]||"").trim(),
     college: iCol>=0?(r[iCol]||"").trim():"",
-    event: iEvt>=0?(r[iEvt]||"").trim():DEFAULT_EVENT
+    event: DEFAULT_EVENT
   })).filter(s=>s.email);
 }
 
