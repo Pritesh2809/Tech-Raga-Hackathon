@@ -60,14 +60,15 @@ async function getTemplate(){
 
 /* ---------- Certificate layout (measured from your template) ---------- */
 const LAYOUT = {
-  pageH: 595.2756,
-  left: 57.23, width: 732,      // text block: x from 57.2 to 789.2 pt
-  firstBaselineTop: 356.48,     // baseline of first line, measured from top
-  lineGap: 30.09,               // same line pitch as the template
-  fontSize: 18.9,               // same size as the template
-  minFontSize: 15,
-  maxLines: 4,
-  color: [1, 1, 1]              // white, same as template text
+  pageH: 595.5,
+  font: { size: 18.9, min: 9 },
+  // Each blank is one line: text is centered between x1 and x2, sitting on baselineTop (measured from the TOP of the page).
+  blanks: {
+    name:    { x1: 299,   x2: 772,   baselineTop: 356.48 },  // after "Mr./Ms." … before "of"
+    college: { x1: 60,    x2: 314,   baselineTop: 386.54 },  // before "has participated in the"
+    event:   { x1: 533,   x2: 787,   baselineTop: 386.54 }   // after "the" … end of line
+  },
+  color: [1, 1, 1]              // white, matches the certificate's printed text
 };
 
 function b64ToBytes(b64){const s=atob(b64),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;}
@@ -80,23 +81,20 @@ function cleanText(s, font){
   return out;
 }
 
-/* words are arrays of parts: {t, bold, sup} */
-function buildWords(name, college, event){
-  const w = (t,bold)=>[{t,bold:!!bold&&BOLD_VALUES}];
-  const words=[];
-  const add=(str,bold)=>str.split(" ").filter(Boolean).forEach(x=>words.push(w(x,bold)));
-  add("This is to certify that Mr./Ms.");
-  add(name,true);
-  add("of");
-  add(college,true);
-  add("has participated in the");
-  if(event){ add(event,true); add("event"); } else { add("event"); }
-  add("as part of TechRaga’26 – A Mega Inter Collegiate Fest, held on");
-  words.push([{t:"23"},{t:"rd",sup:true}]);
-  add("&");
-  words.push([{t:"24"},{t:"th",sup:true}]);
-  add("September 2026 at KPR College of Arts Science and Research, Coimbatore.");
-  return words;
+function fitSize(font, text, maxWidth, start, min){
+  let size = start;
+  while (size > min && font.widthOfTextAtSize(text, size) > maxWidth) size -= 0.5;
+  return size;
+}
+
+function drawInBlank(page, font, text, blank, pageH, color){
+  if(!text) return;
+  const maxWidth = blank.x2 - blank.x1;
+  const size = fitSize(font, text, maxWidth, LAYOUT.font.size, LAYOUT.font.min);
+  const w = font.widthOfTextAtSize(text, size);
+  const x = blank.x1 + Math.max(0, (maxWidth - w) / 2);   // centered in the blank
+  const y = pageH - blank.baselineTop;
+  page.drawText(text, { x, y, size, font, color });
 }
 
 async function buildCertificate(PDFLib, data){
@@ -104,52 +102,15 @@ async function buildCertificate(PDFLib, data){
   const doc = await PDFDocument.load(await getTemplate());
   const page = doc.getPage(0);
   const reg = await doc.embedFont(StandardFonts.TimesRoman);
-  const bold = await doc.embedFont(StandardFonts.TimesRomanBold);
 
-  const name = cleanText(data.name, bold), college = cleanText(data.college, bold), event = cleanText(data.event, bold);
-  const words = buildWords(name, college, event);
-  const L = LAYOUT;
+  const name = cleanText(data.name, reg), college = cleanText(data.college, reg), event = cleanText(data.event, reg);
+  const color = rgb(...LAYOUT.color);
+  const pageH = page.getHeight();
 
-  const partW = (p,size)=>{
-    const f = p.bold?bold:reg, s = p.sup?size*0.5:size;
-    return f.widthOfTextAtSize(p.t, s);
-  };
-  const wordW = (wd,size)=>wd.reduce((a,p)=>a+partW(p,size),0);
+  drawInBlank(page, reg, name,    LAYOUT.blanks.name,    pageH, color);
+  drawInBlank(page, reg, college, LAYOUT.blanks.college, pageH, color);
+  drawInBlank(page, reg, event,   LAYOUT.blanks.event,   pageH, color);
 
-  // wrap; shrink font only if text would need more than maxLines
-  let size = L.fontSize, lines;
-  for(;;){
-    const space = reg.widthOfTextAtSize(" ", size);
-    lines=[]; let cur=[], curW=0;
-    for(const wd of words){
-      const ww = wordW(wd,size);
-      const need = cur.length? curW+space+ww : ww;
-      if(need > L.width && cur.length){ lines.push(cur); cur=[wd]; curW=ww; }
-      else { cur.push(wd); curW=need; }
-    }
-    if(cur.length) lines.push(cur);
-    if(lines.length<=L.maxLines || size<=L.minFontSize) break;
-    size -= 0.5;
-  }
-
-  const spaceNat = reg.widthOfTextAtSize(" ", size);
-  lines.forEach((ln,i)=>{
-    const y = L.pageH - (L.firstBaselineTop + i*L.lineGap);
-    const last = i===lines.length-1;
-    const natural = ln.reduce((a,wd)=>a+wordW(wd,size),0);
-    // justify all lines except the last (as in the original template)
-    let gap = spaceNat;
-    if(!last && ln.length>1) gap = (L.width - natural)/(ln.length-1);
-    let x = L.left;
-    ln.forEach(wd=>{
-      wd.forEach(p=>{
-        const f=p.bold?bold:reg, s=p.sup?size*0.5:size;
-        page.drawText(p.t,{x, y: y + (p.sup? size*0.38 : 0), size:s, font:f, color:rgb(...L.color)});
-        x += f.widthOfTextAtSize(p.t,s);
-      });
-      x += gap;
-    });
-  });
   doc.setTitle("TechRaga'26 Certificate – "+name);
   return await doc.save();
 }
