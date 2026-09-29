@@ -1,203 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TechRaga'26 – Download Your Certificate</title>
-<style>
-:root{--bg:#1a0b3a;--card:#2a1258;--gold:#f3c13a;--text:#fff;--muted:#c9bde8;--err:#ff8a8a}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 20% 10%,#4b1d8f 0,var(--bg) 55%)}
-.card{width:100%;max-width:460px;transition:max-width .2s;background:var(--card);border:1px solid #ffffff22;border-radius:16px;padding:32px 26px;box-shadow:0 20px 60px #0008}
-h1{margin:0 0 4px;font-size:1.5rem;color:var(--gold);text-align:center}
-p.sub{margin:0 0 22px;text-align:center;color:var(--muted);font-size:.92rem}
-label{font-size:.85rem;color:var(--muted)}
-input{width:100%;margin:6px 0 14px;padding:13px 14px;border-radius:10px;border:1px solid #ffffff33;background:#160a33;color:#fff;font-size:1rem}
-input:focus{outline:2px solid var(--gold)}
-button{width:100%;padding:13px;border:0;border-radius:10px;background:linear-gradient(90deg,#f3c13a,#ffdd7a);color:#2a1258;font-weight:700;font-size:1rem;cursor:pointer}
-button:disabled{opacity:.6;cursor:wait}
-button.alt{margin-top:10px;background:#3a1f78;color:#fff;font-weight:600}
-#preview{display:none;margin-top:18px}
-#preview canvas{width:100%;height:auto;border-radius:8px;box-shadow:0 6px 24px #0008}
-.card.wide{max-width:980px}
-#msg{margin-top:16px;font-size:.92rem;text-align:center;min-height:1.2em}
-#msg.err{color:var(--err)}
-#msg.ok{color:#8ff0b0}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TechRaga'26 – Download Your Certificate</title>
+    <style>
+        :root{--bg:#1a0b3a;--card:#2a1258;--gold:#f3c13a;--text:#fff;--muted:#c9bde8;--err:#ff8a8a}
+        *{box-sizing:border-box}
+        body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;font-family:"Segoe UI",Roboto,Arial,sans-serif;color:var(--text);background:radial-gradient(circle at 20% 10%,#4b1d8f 0,var(--bg) 55%)}
+        .card{width:100%;max-width:460px;transition:max-width .2s;background:var(--card);border:1px solid #ffffff22;border-radius:16px;padding:32px 26px;box-shadow:0 20px 60px #0008}
+        h1{margin:0 0 4px;font-size:1.5rem;color:var(--gold);text-align:center}
+        p.sub{margin:0 0 22px;text-align:center;color:var(--muted);font-size:.92rem}
+        label{font-size:.85rem;color:var(--muted)}
+        input{width:100%;margin:6px 0 14px;padding:13px 14px;border-radius:10px;border:1px solid #ffffff33;background:#160a33;color:#fff;font-size:1rem}
+        input:focus{outline:2px solid var(--gold)}
+        button{width:100%;padding:13px;border:0;border-radius:10px;background:linear-gradient(90deg,#f3c13a,#ffdd7a);color:#2a1258;font-weight:700;font-size:1rem;cursor:pointer}
+        button:disabled{opacity:.6;cursor:wait}
+        button.alt{margin-top:10px;background:#3a1f78;color:#fff;font-weight:600}
+        #preview{display:none;margin-top:18px}
+        #preview canvas{width:100%;height:auto;border-radius:8px;box-shadow:0 6px 24px #0008}
+        .card.wide{max-width:980px}
+        #msg{margin-top:16px;font-size:.92rem;text-align:center;min-height:1.2em}
+        #msg.err{color:var(--err)}
+        #msg.ok{color:#8ff0b0}
+    </style>
 </head>
 <body>
 <div class="card">
-  <h1>TechRaga'26</h1>
-  <p class="sub">Enter your registered email to download your Certificate of Participation</p>
-  <label for="email">Email ID</label>
-  <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
-  <button id="go">Get Certificate</button>
-  <div id="list"></div>
-  <div id="msg"></div>
-  <div id="preview"><canvas id="cv"></canvas><button id="dl" style="margin-top:14px">⬇ Download Certificate (PDF)</button></div>
+    <h1>TechRaga'26</h1>
+    <p class="sub">Enter your registered email to download your Certificate of Participation</p>
+    <label for="email">Email ID</label>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+    <button id="go">Get Certificate</button>
+    <div id="list"></div>
+    <div id="msg"></div>
+    <div id="preview"><canvas id="cv"></canvas><button id="dl" style="margin-top:14px">⬇ Download Certificate (PDF)</button></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-/* ================= SETTINGS ================= */
-const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrITbsr2AhjmwJcuQQugnbatc8-rWsG6ycKnMXSZbnt64y3L7Gzg0rXGmHScFc-BIzQCHU8bFAiS88/pub?output=csv";
-// Event name printed on every certificate (overrides any "event" column in the sheet)
-const BOLD_VALUES = false;   // false = name/college/event use the same font & white colour as the rest of the text
-const DEFAULT_EVENT = "Hackathon";
-/* ============================================ */
+    /* ================= SETTINGS ================= */
+    const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQrITbsr2AhjmwJcuQQugnbatc8-rWsG6ycKnMXSZbnt64y3L7Gzg0rXGmHScFc-BIzQCHU8bFAiS88/pub?output=csv";
+    // Event name printed on every certificate (overrides any "event" column in the sheet)
+    const BOLD_VALUES = false;   // false = name/college/event use the same font & white colour as the rest of the text
+    const DEFAULT_EVENT = "Hackathon";
+    /* ============================================ */
 
-const TEMPLATE_URL = "certificate-template.pdf";   // must be in the same folder as this html file
-let templateBytes = null;
-async function getTemplate(){
-  if(!templateBytes){
-    const r = await fetch(TEMPLATE_URL);
-    if(!r.ok) throw new Error("certificate-template.pdf not found next to index.html");
-    templateBytes = new Uint8Array(await r.arrayBuffer());
-  }
-  return templateBytes;
-}
-
-/* ---------- Certificate layout (measured from your template) ---------- */
-const LAYOUT = {
-  pageH: 595.5,
-  font: { size: 18.9, min: 9 },
-  // Each blank is one line: text is centered between x1 and x2, sitting on baselineTop (measured from the TOP of the page).
-  blanks: {
-    name:    { x1: 299,   x2: 772,   baselineTop: 356.48 },  // after "Mr./Ms." … before "of"
-    college: { x1: 60,    x2: 314,   baselineTop: 386.54 },  // before "has participated in the"
-    event:   { x1: 533,   x2: 787,   baselineTop: 386.54 }   // after "the" … end of line
-  },
-  color: [1, 1, 1]              // white, matches the certificate's printed text
-};
-
-function b64ToBytes(b64){const s=atob(b64),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;}
-
-function cleanText(s, font){
-  // drop characters the standard PDF font cannot draw
-  s = (s||"").replace(/\s+/g," ").trim();
-  let out="";
-  for(const ch of s){ try{ font.widthOfTextAtSize(ch,10); out+=ch; }catch(e){} }
-  return out;
-}
-
-function fitSize(font, text, maxWidth, start, min){
-  let size = start;
-  while (size > min && font.widthOfTextAtSize(text, size) > maxWidth) size -= 0.5;
-  return size;
-}
-
-function drawInBlank(page, font, text, blank, pageH, color){
-  if(!text) return;
-  const maxWidth = blank.x2 - blank.x1;
-  const size = fitSize(font, text, maxWidth, LAYOUT.font.size, LAYOUT.font.min);
-  const w = font.widthOfTextAtSize(text, size);
-  const x = blank.x1 + Math.max(0, (maxWidth - w) / 2);   // centered in the blank
-  const y = pageH - blank.baselineTop;
-  page.drawText(text, { x, y, size, font, color });
-}
-
-async function buildCertificate(PDFLib, data){
-  const {PDFDocument, StandardFonts, rgb} = PDFLib;
-  const doc = await PDFDocument.load(await getTemplate());
-  const page = doc.getPage(0);
-  const reg = await doc.embedFont(StandardFonts.TimesRoman);
-
-  const name = cleanText(data.name, reg), college = cleanText(data.college, reg), event = cleanText(data.event, reg);
-  const color = rgb(...LAYOUT.color);
-  const pageH = page.getHeight();
-
-  drawInBlank(page, reg, name,    LAYOUT.blanks.name,    pageH, color);
-  drawInBlank(page, reg, college, LAYOUT.blanks.college, pageH, color);
-  drawInBlank(page, reg, event,   LAYOUT.blanks.event,   pageH, color);
-
-  doc.setTitle("TechRaga'26 Certificate – "+name);
-  return await doc.save();
-}
-
-/* ---------- CSV ---------- */
-function parseCSV(text){
-  const rows=[]; let row=[], cell="", q=false;
-  text = text.replace(/^\uFEFF/,"");
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    if(q){ if(c=='"'){ if(text[i+1]=='"'){cell+='"';i++;} else q=false; } else cell+=c; }
-    else if(c=='"') q=true;
-    else if(c==','){ row.push(cell); cell=""; }
-    else if(c=='\n'||c=='\r'){ if(c=='\r'&&text[i+1]=='\n') i++; row.push(cell); rows.push(row); row=[]; cell=""; }
-    else cell+=c;
-  }
-  if(cell!==""||row.length){ row.push(cell); rows.push(row); }
-  return rows.filter(r=>r.some(x=>x.trim()!==""));
-}
-
-async function loadStudents(){
-  if(location.protocol==="file:") throw new Error("Open this page from a web address (localhost or your hosted link), not directly as a file.");
-  const res = await fetch(SHEET_CSV + (SHEET_CSV.includes("?")?"&":"?") + "t=" + Date.now());
-  if(!res.ok) throw new Error("Could not load the student list");
-  const rows = parseCSV(await res.text());
-  const head = rows[0].map(h=>h.toLowerCase().replace(/[^a-z]/g,""));
-  const find = (...keys)=>head.findIndex(h=>keys.some(k=>h.includes(k)));
-  const iMail = find("mail"), iName = find("name"), iCol = find("college","institution","university"), iEvt = find("event");
-  if(iMail<0||iName<0) throw new Error("Sheet needs 'name' and 'mail' columns");
-  return rows.slice(1).map(r=>({
-    email:(r[iMail]||"").trim().toLowerCase(),
-    name:(r[iName]||"").trim(),
-    college: iCol>=0?(r[iCol]||"").trim():"",
-    event: DEFAULT_EVENT
-  })).filter(s=>s.email);
-}
-
-/* ---------- UI ---------- */
-const $ = id=>document.getElementById(id);
-const msg=(t,c="")=>{$("msg").textContent=t;$("msg").className=c;};
-
-let current=null;
-async function show(s){
-  msg("Preparing your certificate…");
-  const bytes = await buildCertificate(PDFLib, s);
-  current = {bytes, file:"TechRaga26_Certificate_"+s.name.replace(/[^\w]+/g,"_")+".pdf"};
-  try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-    const pdf = await pdfjsLib.getDocument({data: bytes.slice()}).promise;
-    const pg = await pdf.getPage(1);
-    const vp = pg.getViewport({scale:2.2});
-    const cv = $("cv"); cv.width=vp.width; cv.height=vp.height;
-    await pg.render({canvasContext:cv.getContext("2d"), viewport:vp}).promise;
-    document.querySelector(".card").classList.add("wide");
-  }catch(e){ console.warn("Preview failed", e); $("cv").style.display="none"; }
-  $("preview").style.display="block";
-  msg("Certificate ready for "+s.name,"ok");
-}
-$("dl").onclick=()=>{
-  if(!current) return;
-  const url = URL.createObjectURL(new Blob([current.bytes],{type:"application/pdf"}));
-  const a=document.createElement("a"); a.href=url; a.download=current.file;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),4000);
-};
-
-$("go").onclick = async ()=>{
-  const email = $("email").value.trim().toLowerCase();
-  $("list").innerHTML=""; $("preview").style.display="none"; document.querySelector(".card").classList.remove("wide"); $("cv").style.display="block";
-  if(!/^\S+@\S+\.\S+$/.test(email)) return msg("Please enter a valid email ID.","err");
-  $("go").disabled=true; msg("Checking…");
-  try{
-    const matches = (await loadStudents()).filter(s=>s.email===email);
-    if(!matches.length) msg("This email was not found. Please use the email you registered with.","err");
-    else if(matches.length===1) await show(matches[0]);
-    else{
-      msg("Multiple certificates found – choose one:");
-      matches.forEach(s=>{
-        const b=document.createElement("button"); b.className="alt";
-        b.textContent = s.event || (s.name+" – "+s.college);
-        b.onclick=()=>show(s); $("list").appendChild(b);
-      });
+    const TEMPLATE_URL = "certificate-template.pdf";   // must be in the same folder as this html file
+    let templateBytes = null;
+    async function getTemplate(){
+        if(!templateBytes){
+            const r = await fetch(TEMPLATE_URL);
+            if(!r.ok) throw new Error("certificate-template.pdf not found next to index.html");
+            templateBytes = new Uint8Array(await r.arrayBuffer());
+        }
+        return templateBytes;
     }
-  }catch(e){ console.error(e); msg(e.message||"Something went wrong. Please try again.","err"); }
-  $("go").disabled=false;
-};
-$("email").addEventListener("keydown",e=>{ if(e.key==="Enter") $("go").click(); });
+
+    /* ---------- Certificate layout (measured from your template) ---------- */
+    const LAYOUT = {
+        pageH: 595.5,
+        font: { size: 18.9, min: 9 },
+        // Each blank is one line: text is centered between x1 and x2, sitting on baselineTop (measured from the TOP of the page).
+        blanks: {
+            name:    { x1: 299,   x2: 772,   baselineTop: 350.48 },  // after "Mr./Ms." … before "of"
+            college: { x1: 55,    x2: 314,   baselineTop: 380.54 },  // before "has participated in the"
+            event:   { x1: 533,   x2: 787,   baselineTop: 380.54 }   // after "the" … end of line
+        },
+        color: [1, 1, 1]              // white, matches the certificate's printed text
+    };
+
+    function b64ToBytes(b64){const s=atob(b64),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;}
+
+    function cleanText(s, font){
+        // drop characters the standard PDF font cannot draw
+        s = (s||"").replace(/\s+/g," ").trim();
+        let out="";
+        for(const ch of s){ try{ font.widthOfTextAtSize(ch,10); out+=ch; }catch(e){} }
+        return out;
+    }
+
+    function fitSize(font, text, maxWidth, start, min){
+        let size = start;
+        while (size > min && font.widthOfTextAtSize(text, size) > maxWidth) size -= 0.5;
+        return size;
+    }
+
+    function drawInBlank(page, font, text, blank, pageTop, color){
+        if(!text) return;
+        const maxWidth = blank.x2 - blank.x1;
+        const size = fitSize(font, text, maxWidth, LAYOUT.font.size, LAYOUT.font.min);
+        const w = font.widthOfTextAtSize(text, size);
+        const x = blank.x1 + Math.max(0, (maxWidth - w) / 2);   // centered in the blank
+        const y = pageTop - blank.baselineTop;
+        page.drawText(text, { x, y, size, font, color });
+    }
+
+    async function buildCertificate(PDFLib, data){
+        const {PDFDocument, StandardFonts, rgb} = PDFLib;
+        const doc = await PDFDocument.load(await getTemplate());
+        const page = doc.getPage(0);
+        const reg = await doc.embedFont(StandardFonts.TimesRoman);
+
+        const name = cleanText(data.name, reg), college = cleanText(data.college, reg), event = cleanText(data.event, reg);
+        const color = rgb(...LAYOUT.color);
+        // Use the page's own MediaBox top edge (not just its height) as the reference for
+        // "distance from the top", since some exported/flattened PDFs have a MediaBox that
+        // doesn't start at y=0 — using height alone silently shifts everything down.
+        const mb = page.getMediaBox();
+        const pageTop = mb.y + mb.height;
+
+        drawInBlank(page, reg, name,    LAYOUT.blanks.name,    pageTop, color);
+        drawInBlank(page, reg, college, LAYOUT.blanks.college, pageTop, color);
+        drawInBlank(page, reg, event,   LAYOUT.blanks.event,   pageTop, color);
+
+        doc.setTitle("TechRaga'26 Certificate – "+name);
+        return await doc.save();
+    }
+
+    /* ---------- CSV ---------- */
+    function parseCSV(text){
+        const rows=[]; let row=[], cell="", q=false;
+        text = text.replace(/^\uFEFF/,"");
+        for(let i=0;i<text.length;i++){
+            const c=text[i];
+            if(q){ if(c=='"'){ if(text[i+1]=='"'){cell+='"';i++;} else q=false; } else cell+=c; }
+            else if(c=='"') q=true;
+            else if(c==','){ row.push(cell); cell=""; }
+            else if(c=='\n'||c=='\r'){ if(c=='\r'&&text[i+1]=='\n') i++; row.push(cell); rows.push(row); row=[]; cell=""; }
+            else cell+=c;
+        }
+        if(cell!==""||row.length){ row.push(cell); rows.push(row); }
+        return rows.filter(r=>r.some(x=>x.trim()!==""));
+    }
+
+    async function loadStudents(){
+        if(location.protocol==="file:") throw new Error("Open this page from a web address (localhost or your hosted link), not directly as a file.");
+        const res = await fetch(SHEET_CSV + (SHEET_CSV.includes("?")?"&":"?") + "t=" + Date.now());
+        if(!res.ok) throw new Error("Could not load the student list");
+        const rows = parseCSV(await res.text());
+        const head = rows[0].map(h=>h.toLowerCase().replace(/[^a-z]/g,""));
+        const find = (...keys)=>head.findIndex(h=>keys.some(k=>h.includes(k)));
+        const iMail = find("mail"), iName = find("name"), iCol = find("college","institution","university"), iEvt = find("event");
+        if(iMail<0||iName<0) throw new Error("Sheet needs 'name' and 'mail' columns");
+        return rows.slice(1).map(r=>({
+            email:(r[iMail]||"").trim().toLowerCase(),
+            name:(r[iName]||"").trim(),
+            college: iCol>=0?(r[iCol]||"").trim():"",
+            event: DEFAULT_EVENT
+        })).filter(s=>s.email);
+    }
+
+    /* ---------- UI ---------- */
+    const $ = id=>document.getElementById(id);
+    const msg=(t,c="")=>{$("msg").textContent=t;$("msg").className=c;};
+
+    let current=null;
+    async function show(s){
+        msg("Preparing your certificate…");
+        const bytes = await buildCertificate(PDFLib, s);
+        current = {bytes, file:"TechRaga26_Certificate_"+s.name.replace(/[^\w]+/g,"_")+".pdf"};
+        try{
+            pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+            const pdf = await pdfjsLib.getDocument({data: bytes.slice()}).promise;
+            const pg = await pdf.getPage(1);
+            const vp = pg.getViewport({scale:2.2});
+            const cv = $("cv"); cv.width=vp.width; cv.height=vp.height;
+            await pg.render({canvasContext:cv.getContext("2d"), viewport:vp}).promise;
+            document.querySelector(".card").classList.add("wide");
+        }catch(e){ console.warn("Preview failed", e); $("cv").style.display="none"; }
+        $("preview").style.display="block";
+        msg("Certificate ready for "+s.name,"ok");
+    }
+    $("dl").onclick=()=>{
+        if(!current) return;
+        const url = URL.createObjectURL(new Blob([current.bytes],{type:"application/pdf"}));
+        const a=document.createElement("a"); a.href=url; a.download=current.file;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),4000);
+    };
+
+    $("go").onclick = async ()=>{
+        const email = $("email").value.trim().toLowerCase();
+        $("list").innerHTML=""; $("preview").style.display="none"; document.querySelector(".card").classList.remove("wide"); $("cv").style.display="block";
+        if(!/^\S+@\S+\.\S+$/.test(email)) return msg("Please enter a valid email ID.","err");
+        $("go").disabled=true; msg("Checking…");
+        try{
+            const matches = (await loadStudents()).filter(s=>s.email===email);
+            if(!matches.length) msg("This email was not found. Please use the email you registered with.","err");
+            else if(matches.length===1) await show(matches[0]);
+            else{
+                msg("Multiple certificates found – choose one:");
+                matches.forEach(s=>{
+                    const b=document.createElement("button"); b.className="alt";
+                    b.textContent = s.event || (s.name+" – "+s.college);
+                    b.onclick=()=>show(s); $("list").appendChild(b);
+                });
+            }
+        }catch(e){ console.error(e); msg(e.message||"Something went wrong. Please try again.","err"); }
+        $("go").disabled=false;
+    };
+    $("email").addEventListener("keydown",e=>{ if(e.key==="Enter") $("go").click(); });
 </script>
 </body>
 </html>
